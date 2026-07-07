@@ -4,4 +4,4 @@ numpy==2.2.0
 pandas
 scikit-learn
 joblib
-categorical-encoders
+category-encoders
