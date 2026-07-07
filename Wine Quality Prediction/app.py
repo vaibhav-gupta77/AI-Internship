@@ -1,20 +1,49 @@
 import streamlit as st
 import numpy as np
-import tensorflow as tf
+import pandas as pd
 from pathlib import Path
+from sklearn.ensemble import RandomForestClassifier
+import joblib
 
 st.set_page_config(page_title="Wine Quality Checker", page_icon="🍷")
 
 st.title("🍷 Wine Quality Checker")
 st.write("Enter the wine properties to predict the quality class.")
 
+FEATURE_COLUMNS = [
+    "fixed acidity",
+    "volatile acidity",
+    "citric acid",
+    "residual sugar",
+    "chlorides",
+    "free sulfur dioxide",
+    "total sulfur dioxide",
+    "density",
+    "pH",
+    "sulphates",
+    "alcohol",
+]
+
+MODEL_PATH = Path(__file__).resolve().parent / "wine_quality_model.joblib"
+DATA_PATH = Path(__file__).resolve().parent / "wine.csv"
+
 
 @st.cache_resource
 def load_model():
-    model_path = Path(__file__).resolve().parent / "wine_quality_model.h5"
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-    return tf.keras.models.load_model(model_path)
+    if MODEL_PATH.exists():
+        return joblib.load(MODEL_PATH)
+
+    if not DATA_PATH.exists():
+        raise FileNotFoundError(f"Dataset file not found: {DATA_PATH}")
+
+    df = pd.read_csv(DATA_PATH)
+    X = df[FEATURE_COLUMNS]
+    y = df["quality"].astype(int)
+
+    model = RandomForestClassifier(n_estimators=200, random_state=42)
+    model.fit(X, y)
+    joblib.dump(model, MODEL_PATH)
+    return model
 
 
 model = load_model()
@@ -39,6 +68,5 @@ if submitted:
         [fixed_acidity, volatile_acidity, citric_acidity, pH, residual_sugar, chlorides,
          free_sulfur_dioxide, total_sulfur_dioxide, density, sulphates, alcohol]
     ], dtype=float)
-    prediction = model.predict(features, verbose=0)
-    quality = int(np.argmax(prediction) + 3)
-    st.success(f"Predicted wine quality class: {quality}")
+    prediction = int(model.predict(features)[0])
+    st.success(f"Predicted wine quality class: {prediction}")
